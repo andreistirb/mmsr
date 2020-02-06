@@ -29,7 +29,7 @@ class SRModel(BaseModel):
         else:
             self.netG = DataParallel(self.netG)
         # print network
-        self.print_network()
+        #self.print_network()
         self.load()
 
         if self.is_train:
@@ -46,6 +46,26 @@ class SRModel(BaseModel):
             else:
                 raise NotImplementedError('Loss type [{:s}] is not recognized.'.format(loss_type))
             self.l_pix_w = train_opt['pixel_weight']
+
+            # G feature loss
+            if train_opt['feature_weight'] > 0:
+                l_fea_type = train_opt['feature_criterion']
+                if l_fea_type == 'l1':
+                    self.cri_fea = nn.L1Loss().to(self.device)
+                elif l_fea_type == 'l2':
+                    self.cri_fea = nn.MSELoss().to(self.device)
+                else:
+                    raise NotImplementedError('Loss type [{:s}] not recognized.'.format(l_fea_type))
+                self.l_fea_w = train_opt['feature_weight']
+            else:
+                logger.info('Remove feature loss.')
+                self.cri_fea = None
+            if self.cri_fea:  # load VGG perceptual loss
+                self.netF = networks.define_F(opt, use_bn=False).to(self.device)
+                if opt['dist']:
+                    pass  # do not need to use DistributedDataParallel for netF
+                else:
+                    self.netF = DataParallel(self.netF)
 
             # optimizers
             wd_G = train_opt['weight_decay_G'] if train_opt['weight_decay_G'] else 0
@@ -88,13 +108,36 @@ class SRModel(BaseModel):
 
     def optimize_parameters(self, step):
         self.optimizer_G.zero_grad()
+
+        l_g_total = 0
+        # print(self.var_L.shape)
+        # self.fake_H, self.first_feat, self.second_feat, self.third_feat, self.fourth_feat = self.netG(self.var_L)
         self.fake_H = self.netG(self.var_L)
         l_pix = self.l_pix_w * self.cri_pix(self.fake_H, self.real_H)
-        l_pix.backward()
+        l_g_total += l_pix
+
+        if self.cri_fea:  # feature loss
+            real_fea = self.netF(self.real_H).detach()
+            fake_fea = self.netF(self.fake_H)
+            l_g_fea = self.l_fea_w * self.cri_fea(fake_fea, real_fea)
+            l_g_total += l_g_fea
+
+        l_g_total.backward()
         self.optimizer_G.step()
 
         # set log
         self.log_dict['l_pix'] = l_pix.item()
+        if self.cri_fea:
+            self.log_dict['l_g_fea'] = l_g_fea.item()
+
+    # def get_features(self, step):
+    #     out_dict = OrderedDict()
+    #     out_dict['first'] = self.first_feat.detach().float().cpu()
+    #     out_dict['second'] = self.second_feat.detach().float().cpu()
+    #     out_dict['third'] = self.third_feat.detach().float().cpu()
+    #     out_dict['fourth'] = self.fourth_feat.detach().float().cpu()
+    #     return out_dict
+
 
     def test(self):
         self.netG.eval()

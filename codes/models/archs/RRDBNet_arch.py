@@ -71,3 +71,71 @@ class RRDBNet(nn.Module):
         out = self.conv_last(self.lrelu(self.HRconv(fea)))
 
         return out
+
+class RRDBNet_16x(nn.Module):
+    def __init__(self, in_nc, out_nc, nf, nb, gc=32):
+        super(RRDBNet_16x, self).__init__()
+        RRDB_block_f = functools.partial(RRDB, nf=nf, gc=gc)
+
+        self.conv_first = nn.Conv2d(in_nc, nf, 3, 1, 1, bias=True)
+        self.RRDB_trunk = arch_util.make_layer(RRDB_block_f, nb)
+        self.trunk_conv = nn.Conv2d(nf, nf, 3, 1, 1, bias=True)
+        #### upsampling
+        self.upconv1 = nn.Conv2d(nf, nf, 3, 1, 1, bias=True)
+        self.upconv2 = nn.Conv2d(nf, nf, 3, 1, 1, bias=True)
+        self.HRconv = nn.Conv2d(nf, nf, 3, 1, 1, bias=True)
+        self.conv_last = nn.Conv2d(nf, out_nc, 3, 1, 1, bias=True)
+
+        self.lrelu = nn.LeakyReLU(negative_slope=0.2, inplace=True)
+
+    def forward(self, x):
+        fea = self.conv_first(x)
+        trunk = self.trunk_conv(self.RRDB_trunk(fea))
+        fea = fea + trunk
+
+        fea = self.lrelu(self.upconv1(F.interpolate(fea, scale_factor=2, mode='bicubic')))
+        # print("After first upsample {}".format(fea[0][0].unsqueeze(0).shape))
+        # first_upsample = fea[0][0].unsqueeze(0)
+        fea = self.lrelu(self.upconv2(F.interpolate(fea, scale_factor=2, mode='bicubic')))
+        # print("After second upsample {}".format(fea.shape))
+        # second_upsample = fea[0][0].unsqueeze(0)
+        fea = self.lrelu(self.upconv2(F.interpolate(fea, scale_factor=2, mode='bicubic')))
+        # print("After third upsample {}".format(fea.shape))
+        # third_upsample = fea[0][0].unsqueeze(0)
+        fea = self.lrelu(self.upconv2(F.interpolate(fea, scale_factor=2, mode='bicubic')))
+        # print("After fourth upsample {}".format(fea.shape))
+        # fourth_upsample = fea[0][0].unsqueeze(0)
+        out = self.conv_last(self.lrelu(self.HRconv(fea)))
+
+        # return out, first_upsample, second_upsample, third_upsample, fourth_upsample
+        return out
+
+class RRDBNetTRConv_16x(nn.Module):
+    def __init__(self, in_nc, out_nc, nf, nb, gc=32):
+        super(RRDBNetTRConv_16x, self).__init__()
+        RRDB_block_f = functools.partial(RRDB, nf=nf, gc=gc)
+
+        self.conv_first = nn.Conv2d(in_nc, nf, 3, 1, 1, bias=True)
+        self.RRDB_trunk = arch_util.make_layer(RRDB_block_f, nb)
+        self.trunk_conv = nn.Conv2d(nf, nf, 3, 1, 1, bias=True)
+        #### upsampling
+        self.tr_conv = nn.ConvTranspose2d(nf, nf, 2, 2,  bias=True)
+        self.HRconv = nn.Conv2d(nf, nf, 3, 1, 1, bias=True)
+        self.conv_last = nn.Conv2d(nf, out_nc, 3, 1, 1, bias=True)
+
+        self.lrelu = nn.LeakyReLU(negative_slope=0.2, inplace=True)
+
+    def forward(self, x):
+        fea = self.conv_first(x)
+        trunk = self.trunk_conv(self.RRDB_trunk(fea))
+        fea = fea + trunk
+
+        fea = self.lrelu(self.tr_conv(fea))
+        fea = self.lrelu(self.tr_conv(fea))
+        fea = self.lrelu(self.tr_conv(fea))
+        fea = self.lrelu(self.tr_conv(fea))
+
+        out = self.conv_last(self.lrelu(self.HRconv(fea)))
+
+
+        return out

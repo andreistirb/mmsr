@@ -12,11 +12,11 @@ except ImportError:
 
 def generate_mod_LR_bic():
     # set parameters
-    up_scale = 4
-    mod_scale = 4
+    up_scale = 16
+    mod_scale = 16
     # set data dir
-    sourcedir = '/data/datasets/img'
-    savedir = '/data/datasets/mod'
+    sourcedir = '/media/andreis/storage/datasets/8K/validationHR'
+    savedir = '/media/andreis/storage/datasets/8K/validationHR_2048_processed'
 
     saveHRpath = os.path.join(savedir, 'HR', 'x' + str(mod_scale))
     saveLRpath = os.path.join(savedir, 'LR', 'x' + str(up_scale))
@@ -60,6 +60,15 @@ def generate_mod_LR_bic():
         # read image
         image = cv2.imread(os.path.join(sourcedir, filename))
 
+        width = image.shape[1]
+        height = image.shape[0]
+
+        # center crop 2048 x 2048 -> might be a better candidate for scoring
+        top = int(height/2) - 1024
+        left = int(width / 2) - 1024
+        image = image[top:top+2048, left:left+2048, :]
+
+
         width = int(np.floor(image.shape[1] / mod_scale))
         height = int(np.floor(image.shape[0] / mod_scale))
         # modcrop
@@ -67,6 +76,7 @@ def generate_mod_LR_bic():
             image_HR = image[0:mod_scale * height, 0:mod_scale * width, :]
         else:
             image_HR = image[0:mod_scale * height, 0:mod_scale * width]
+
         # LR
         image_LR = imresize_np(image_HR, 1 / up_scale, True)
         # bic

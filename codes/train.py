@@ -178,6 +178,7 @@ def main():
                     # does not support multi-GPU validation
                     pbar = util.ProgressBar(len(val_loader))
                     avg_psnr = 0.
+                    avg_ssim = 0.
                     idx = 0
                     for val_data in val_loader:
                         idx += 1
@@ -185,12 +186,18 @@ def main():
                         img_dir = os.path.join(opt['path']['val_images'], img_name)
                         util.mkdir(img_dir)
 
-                        model.feed_data(val_data)
+                        # we don't need GT data to be run with the model
+                        gt_img = util.tensor2img(val_data['GT'])  # uint8
+                        val_data['GT'] = torch.tensor(0)
+
+                        import sys
+                        #print(val_data['LQ'].shape)
+                        model.feed_data(val_data,need_GT=False)
                         model.test()
 
                         visuals = model.get_current_visuals()
                         sr_img = util.tensor2img(visuals['rlt'])  # uint8
-                        gt_img = util.tensor2img(visuals['GT'])  # uint8
+                        
 
                         # Save SR images for reference
                         save_img_path = os.path.join(img_dir,
@@ -200,15 +207,20 @@ def main():
                         # calculate PSNR
                         sr_img, gt_img = util.crop_border([sr_img, gt_img], opt['scale'])
                         avg_psnr += util.calculate_psnr(sr_img, gt_img)
+                        avg_ssim += util.calculate_ssim(sr_img, gt_img)
                         pbar.update('Test {}'.format(img_name))
 
                     avg_psnr = avg_psnr / idx
+                    avg_ssim = avg_ssim / idx
 
                     # log
                     logger.info('# Validation # PSNR: {:.4e}'.format(avg_psnr))
+                    logger.info('# Validation # SSIM: {:.4e}'.format(avg_ssim))
                     # tensorboard logger
                     if opt['use_tb_logger'] and 'debug' not in opt['name']:
                         tb_logger.add_scalar('psnr', avg_psnr, current_step)
+                        tb_logger.add_scalar('ssim', avg_ssim, current_step)
+                    
                 else:  # video restoration validation
                     if opt['dist']:
                         # multi-GPU testing

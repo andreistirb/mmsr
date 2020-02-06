@@ -121,7 +121,7 @@ class SRGANModel(BaseModel):
 
             self.log_dict = OrderedDict()
 
-        self.print_network()  # print network
+        #self.print_network()  # print network
         self.load()  # load G and D if needed
 
     def feed_data(self, data, need_GT=True):

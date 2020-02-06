@@ -1,10 +1,11 @@
 """A multi-thread tool to crop large images to sub-images for faster IO."""
+import cv2
 import os
 import os.path as osp
 import sys
 from multiprocessing import Pool
 import numpy as np
-import cv2
+
 from PIL import Image
 sys.path.append(osp.dirname(osp.dirname(osp.abspath(__file__))))
 from utils.util import ProgressBar  # noqa: E402
@@ -26,14 +27,14 @@ def main():
         opt['thres_sz'] = 48  # size threshold
         extract_signle(opt)
     elif mode == 'pair':
-        GT_folder = '../../datasets/DIV2K/DIV2K_train_HR'
-        LR_folder = '../../datasets/DIV2K/DIV2K_train_LR_bicubic/X4'
-        save_GT_folder = '../../datasets/DIV2K/DIV2K800_sub'
-        save_LR_folder = '../../datasets/DIV2K/DIV2K800_sub_bicLRx4'
-        scale_ratio = 4
+        GT_folder = '/media/andreis/storage/datasets/8K/train_processed/HR/x16'
+        LR_folder = '/media/andreis/storage/datasets/8K/train_processed/LR/x16'
+        save_GT_folder = '/media/andreis/storage/datasets/8K/train_subimages/DIV8K_sub'
+        save_LR_folder = '/media/andreis/storage/datasets/8K/train_subimages/DIV8K_sub_bicLRx4'
+        scale_ratio = 16
         crop_sz = 480  # the size of each sub-image (GT)
-        step = 240  # step of the sliding crop window (GT)
-        thres_sz = 48  # size threshold
+        step = 480  # step of the sliding crop window (GT)
+        thres_sz = 480  # size threshold
         ########################################################################
         # check that all the GT and LR images have correct scale ratio
         img_GT_list = data_util._get_paths_from_images(GT_folder)

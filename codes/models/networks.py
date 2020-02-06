@@ -17,6 +17,16 @@ def define_G(opt):
     elif which_model == 'RRDBNet':
         netG = RRDBNet_arch.RRDBNet(in_nc=opt_net['in_nc'], out_nc=opt_net['out_nc'],
                                     nf=opt_net['nf'], nb=opt_net['nb'])
+    # 16x superresolution
+    elif which_model == 'RRDBNet_16x':
+        netG = RRDBNet_arch.RRDBNet_16x(in_nc=opt_net['in_nc'], out_nc=opt_net['out_nc'],
+                                    nf=opt_net['nf'], nb=opt_net['nb'])
+
+    # 16x superresolution with transposed conv
+    elif which_model == 'RRDBNetTRConv_16x':
+        netG = RRDBNet_arch.RRDBNetTRConv_16x(in_nc=opt_net['in_nc'], out_nc=opt_net['out_nc'],
+                                    nf=opt_net['nf'], nb=opt_net['nb'])
+
     # video restoration
     elif which_model == 'EDVR':
         netG = EDVR_arch.EDVR(nf=opt_net['nf'], nframes=opt_net['nframes'],
@@ -53,5 +63,7 @@ def define_F(opt, use_bn=False):
         feature_layer = 34
     netF = SRGAN_arch.VGGFeatureExtractor(feature_layer=feature_layer, use_bn=use_bn,
                                           use_input_norm=True, device=device)
+    #netF = SRGAN_arch.ResNetFeatureExtractor(feature_layer=feature_layer, use_bn=use_bn,
+    #                                      use_input_norm=True, device=device)
     netF.eval()  # No need to train
     return netF

@@ -33,14 +33,14 @@ def main():
     elif dataset == 'DIV2K_demo':
         opt = {}
         ## GT
-        opt['img_folder'] = '../../datasets/DIV2K/DIV2K800_sub'
-        opt['lmdb_save_path'] = '../../datasets/DIV2K/DIV2K800_sub.lmdb'
-        opt['name'] = 'DIV2K800_sub_GT'
+        opt['img_folder'] = '/media/andreis/storage/datasets/8K/train_subimages/DIV8K_sub'
+        opt['lmdb_save_path'] = '/media/andreis/storage/datasets/8K/train_lmdb/DIV8K_sub.lmdb'
+        opt['name'] = 'DIV8K_sub_GT'
         general_image_folder(opt)
         ## LR
-        opt['img_folder'] = '../../datasets/DIV2K/DIV2K800_sub_bicLRx4'
-        opt['lmdb_save_path'] = '../../datasets/DIV2K/DIV2K800_sub_bicLRx4.lmdb'
-        opt['name'] = 'DIV2K800_sub_bicLRx4'
+        opt['img_folder'] = '/media/andreis/storage/datasets/8K/train_subimages/DIV8K_sub_bicLRx4'
+        opt['lmdb_save_path'] = '/media/andreis/storage/datasets/8K/train_lmdb/DIV8K_sub_bicLRx16.lmdb'
+        opt['name'] = 'DIV8K_sub_bicLRx4'
         general_image_folder(opt)
     elif dataset == 'test':
         test_lmdb('../../datasets/REDS/train_sharp_wval.lmdb', 'REDS')
@@ -60,8 +60,8 @@ def general_image_folder(opt):
     #### configurations
     read_all_imgs = False  # whether real all images to memory with multiprocessing
     # Set False for use limited memory
-    BATCH = 5000  # After BATCH images, lmdb commits, if read_all_imgs = False
-    n_thread = 40
+    BATCH = 100  # After BATCH images, lmdb commits, if read_all_imgs = False
+    n_thread = 10
     ########################################################
     img_folder = opt['img_folder']
     lmdb_save_path = opt['lmdb_save_path']

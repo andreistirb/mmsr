@@ -1,0 +1,28 @@
+name: PSNR_16x_1000_progressive
+suffix: ~  # add suffix to saved images
+model: sr
+distortion: sr
+scale: 16
+crop_border: ~  # crop border when evaluation. If None(~), crop the scale pixels
+gpu_ids: [0]
+
+datasets:
+  test_1:  # the 1st test dataset
+    name: 8K_Test
+    mode: LQGT
+    dataroot_GT: /media/andreis/storage/datasets/8K/validationHR_processed/HR/x16
+    dataroot_LQ: /media/andreis/storage/datasets/8K/validationHR_processed/LR/x16
+
+
+#### network structures
+network_G:
+  which_model_G: RRDBNet_16x
+  in_nc: 3
+  out_nc: 3
+  nf: 64
+  nb: 16
+  upscale: 16
+
+#### path
+path:
+  pretrain_model_G: /home/andreis/workspace/mmsr/experiments/002_PSNR_base_model_feature_loss_16_progressive/models/200000_G.pth
