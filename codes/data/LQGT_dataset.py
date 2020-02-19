@@ -45,6 +45,8 @@ class LQGTDataset(data.Dataset):
         scale = self.opt['scale']
         GT_size = self.opt['GT_size']
 
+        img_GT_mask = None
+
         # get GT image
         GT_path = self.paths_GT[index]
         resolution = [int(s) for s in self.sizes_GT[index].split('_')
@@ -108,6 +110,24 @@ class LQGTDataset(data.Dataset):
             img_LQ, img_GT = util.augment([img_LQ, img_GT], self.opt['use_flip'],
                                           self.opt['use_rot'])
 
+        # create edge mask for GT
+        low_threshold = 25
+        ratio = 3
+        kernel_size = 5
+        img_GT_grayscale = cv2.cvtColor(img_GT, cv2.COLOR_BGR2GRAY)
+        img_GT_blurred = cv2.blur(img_GT_grayscale, (kernel_size, kernel_size))
+        img_GT_blurred = 255 * img_GT_blurred # Now scale by 255
+        img_GT_blurred = img_GT_blurred.astype(np.uint8)
+
+        detected_edges = cv2.Canny(img_GT_blurred, low_threshold, low_threshold * ratio, kernel_size)
+        mask = detected_edges != 0
+        img_GT_mask = img_GT_grayscale * (mask[:,:].astype(img_GT_grayscale.dtype))
+        img_GT_mask = cv2.GaussianBlur(img_GT_mask, (3, 3), 0)
+        img_GT_mask = np.expand_dims(img_GT_mask,0)
+
+        # cv2.imshow("window", img_GT_mask)
+        # cv2.waitKey()
+
         if self.opt['color']:  # change color space if necessary
             img_LQ = util.channel_convert(C, self.opt['color'],
                                           [img_LQ])[0]  # TODO during val no definition
@@ -121,7 +141,7 @@ class LQGTDataset(data.Dataset):
 
         if LQ_path is None:
             LQ_path = GT_path
-        return {'LQ': img_LQ, 'GT': img_GT, 'LQ_path': LQ_path, 'GT_path': GT_path}
+        return {'LQ': img_LQ, 'GT': img_GT, 'LQ_path': LQ_path, 'GT_path': GT_path, 'GT_mask': img_GT_mask}
 
     def __len__(self):
         return len(self.paths_GT)

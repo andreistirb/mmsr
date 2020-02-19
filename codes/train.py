@@ -197,6 +197,26 @@ def main():
 
                         visuals = model.get_current_visuals()
                         sr_img = util.tensor2img(visuals['rlt'])  # uint8
+
+                        if "mask" in visuals:
+                            mask = util.tensor2img(visuals['mask'])
+                            # print(mask)
+                            # Save SR mask for reference
+                            save_img_path = os.path.join(img_dir,
+                                                        '{:s}_{:d}_mask.png'.format(img_name, current_step))
+                            util.save_img(mask, save_img_path)
+
+                            #gt_mask_dir = os.path.join(opt['path']['gt_mask'], img_name)
+                            
+                            #gt_mask = util.tensor2img(val_data['GT_mask'])
+                            #print(gt_mask)
+                            #import cv2
+                            #cv2.imshow("window", gt_mask)
+                            #cv2.waitKey()
+                            #util.mkdir(gt_mask_dir)
+                            #save_img_path = os.path.join(gt_mask_dir,
+                            #                            '{:s}_{:d}_GT_mask.png'.format(img_name, current_step))
+                            #util.save_img(gt_mask, save_img_path)
                         
 
                         # Save SR images for reference

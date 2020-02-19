@@ -85,6 +85,7 @@ class RRDBNet_16x(nn.Module):
         self.upconv2 = nn.Conv2d(nf, nf, 3, 1, 1, bias=True)
         self.HRconv = nn.Conv2d(nf, nf, 3, 1, 1, bias=True)
         self.conv_last = nn.Conv2d(nf, out_nc, 3, 1, 1, bias=True)
+        self.mask_conv = nn.Conv2d(nf, 1, 3, 1, 1)
 
         self.lrelu = nn.LeakyReLU(negative_slope=0.2, inplace=True)
 
@@ -105,10 +106,12 @@ class RRDBNet_16x(nn.Module):
         fea = self.lrelu(self.upconv2(F.interpolate(fea, scale_factor=2, mode='bicubic')))
         # print("After fourth upsample {}".format(fea.shape))
         # fourth_upsample = fea[0][0].unsqueeze(0)
-        out = self.conv_last(self.lrelu(self.HRconv(fea)))
+        output_feat = self.lrelu(self.HRconv(fea))
+        out = self.conv_last(output_feat)
+        mask = self.mask_conv(output_feat)
 
         # return out, first_upsample, second_upsample, third_upsample, fourth_upsample
-        return out
+        return out, mask
 
 class RRDBNetTRConv_16x(nn.Module):
     def __init__(self, in_nc, out_nc, nf, nb, gc=32):

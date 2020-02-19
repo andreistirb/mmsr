@@ -32,10 +32,12 @@ class SRModel(BaseModel):
         #self.print_network()
         self.load()
 
+        self.cri_mask = None
+
         if self.is_train:
             self.netG.train()
 
-            # loss
+            # pixel loss
             loss_type = train_opt['pixel_criterion']
             if loss_type == 'l1':
                 self.cri_pix = nn.L1Loss().to(self.device)
@@ -66,6 +68,20 @@ class SRModel(BaseModel):
                     pass  # do not need to use DistributedDataParallel for netF
                 else:
                     self.netF = DataParallel(self.netF)
+
+            # Mask loss
+            if train_opt['mask_weight'] > 0:
+                mask_loss_type = train_opt['mask_criterion']
+                if mask_loss_type == 'l1':
+                    self.cri_mask = nn.L1Loss().to(self.device)
+                elif mask_loss_type == 'l2':
+                    self.cri_mask = nn.MSELoss().to(self.device)
+                else:
+                    raise NotImplementedError('Loss type [{:s}] not recognized.'.format(l_fea_type))
+                self.l_mask_w = train_opt['mask_weight']
+            else:
+                logger.info('Remove feature loss.')
+                self.cri_mask = None
 
             # optimizers
             wd_G = train_opt['weight_decay_G'] if train_opt['weight_decay_G'] else 0
@@ -105,22 +121,38 @@ class SRModel(BaseModel):
         self.var_L = data['LQ'].to(self.device)  # LQ
         if need_GT:
             self.real_H = data['GT'].to(self.device)  # GT
+            self.GT_mask = data['GT_mask'].to(self.device)
 
     def optimize_parameters(self, step):
         self.optimizer_G.zero_grad()
 
         l_g_total = 0
+
         # print(self.var_L.shape)
         # self.fake_H, self.first_feat, self.second_feat, self.third_feat, self.fourth_feat = self.netG(self.var_L)
-        self.fake_H = self.netG(self.var_L)
+
+        self.fake_H, self.mask_prediction = self.netG(self.var_L)
+        # print(self.fake_H[:,:3].shape)
+
+        # if self.cri_mask is not None:
+        #     self.mask_prediction = self.fake_H[:,3]
+        #     self.fake_H = self.fake_H[:,:3]
+
+        # pixel loss
         l_pix = self.l_pix_w * self.cri_pix(self.fake_H, self.real_H)
         l_g_total += l_pix
 
-        if self.cri_fea:  # feature loss
+        # feature loss
+        if self.cri_fea:
             real_fea = self.netF(self.real_H).detach()
             fake_fea = self.netF(self.fake_H)
             l_g_fea = self.l_fea_w * self.cri_fea(fake_fea, real_fea)
             l_g_total += l_g_fea
+
+        # edge mask loss
+        if self.cri_mask:
+            l_mask = self.l_mask_w * self.cri_mask(self.mask_prediction, self.GT_mask)
+            l_g_total += l_mask
 
         l_g_total.backward()
         self.optimizer_G.step()
@@ -129,6 +161,8 @@ class SRModel(BaseModel):
         self.log_dict['l_pix'] = l_pix.item()
         if self.cri_fea:
             self.log_dict['l_g_fea'] = l_g_fea.item()
+        if self.cri_mask:
+            self.log_dict['l_g_mask'] = l_mask.item()
 
     # def get_features(self, step):
     #     out_dict = OrderedDict()
@@ -142,7 +176,10 @@ class SRModel(BaseModel):
     def test(self):
         self.netG.eval()
         with torch.no_grad():
-            self.fake_H = self.netG(self.var_L)
+            self.fake_H, self.mask_prediction = self.netG(self.var_L)
+            # if self.cri_mask is not None:
+            #     self.mask_prediction = self.fake_H[:,3]
+            #     self.fake_H = self.fake_H[:,:3]
         self.netG.train()
 
     def test_x8(self):
@@ -188,8 +225,11 @@ class SRModel(BaseModel):
         out_dict = OrderedDict()
         out_dict['LQ'] = self.var_L.detach()[0].float().cpu()
         out_dict['rlt'] = self.fake_H.detach()[0].float().cpu()
+        out_dict['mask'] = self.mask_prediction.detach()[0].float().cpu()
         if need_GT:
             out_dict['GT'] = self.real_H.detach()[0].float().cpu()
+            if self.cri_mask:
+                out_dict['GT_mask'] = self.GT_mask.detach()[0].float().cpu()
         return out_dict
 
     def print_network(self):

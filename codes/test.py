@@ -10,6 +10,9 @@ from data.util import bgr2ycbcr
 from data import create_dataset, create_dataloader
 from models import create_model
 
+import numpy as np
+from skimage.filters import unsharp_mask
+
 #### options
 parser = argparse.ArgumentParser()
 parser.add_argument('-opt', type=str, required=True, help='Path to options YMAL file.')
@@ -56,6 +59,10 @@ for test_loader in test_loaders:
         visuals = model.get_current_visuals(need_GT=need_GT)
 
         sr_img = util.tensor2img(visuals['rlt'])  # uint8
+        mask = util.tensor2img(visuals['mask'])
+        mask_three_channels = np.stack([mask, mask, mask], -1)
+        # sr_img = sr_img + mask_three_channels
+        #print(mask)
 
         # save images
         suffix = opt['suffix']
@@ -69,6 +76,36 @@ for test_loader in test_loaders:
         if need_GT:
             gt_img = util.tensor2img(visuals['GT'])
             sr_img, gt_img = util.crop_border([sr_img, gt_img], opt['scale'])
+
+            # sr_img = unsharp_mask(sr_img, amount=1, preserve_range=True)
+
+            # sharpen sr_img
+            # import cv2
+            # import numpy as np
+
+            # def unsharp_mask(image, kernel_size=(5, 5), sigma=1.0, amount=1.0, threshold=0):
+            #     """Return a sharpened version of the image, using an unsharp mask."""
+            #     blurred = cv2.GaussianBlur(image, kernel_size, sigma)
+            #     sharpened = float(amount + 1) * image - float(amount) * blurred
+            #     sharpened = np.maximum(sharpened, np.zeros(sharpened.shape))
+            #     sharpened = np.minimum(sharpened, 255 * np.ones(sharpened.shape))
+            #     sharpened = sharpened.round().astype(np.uint8)
+            #     if threshold > 0:
+            #         low_contrast_mask = np.absolute(image - blurred) < threshold
+            #         np.copyto(sharpened, image, where=low_contrast_mask)
+            #     return sharpened
+
+            #cv2.imshow('Before Sharpening', sr_img)
+            #kernel = np.array([[-1,-1,-1], 
+            #       [-1, 9,-1],
+            #       [-1,-1,-1]])
+            #sr_img = cv2.filter2D(sr_img, -1, kernel)
+            #sr_img = unsharp_mask(sr_img)
+            #cv2.imshow('Image Sharpening', sr_img)
+            
+            #cv2.waitKey(0)
+            #cv2.destroyAllWindows()
+
             psnr = util.calculate_psnr(sr_img, gt_img)
             ssim = util.calculate_ssim(sr_img, gt_img)
             test_results['psnr'].append(psnr)
@@ -89,6 +126,8 @@ for test_loader in test_loaders:
                 logger.info('{:20s} - PSNR: {:.6f} dB; SSIM: {:.6f}.'.format(img_name, psnr, ssim))
         else:
             logger.info(img_name)
+
+        
 
     if need_GT:  # metrics
         # Average PSNR/SSIM results

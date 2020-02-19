@@ -1,4 +1,4 @@
-name: PSNR_16x_1000_progressive
+name: 002_PSNR_16x_1000_subset_usm
 suffix: ~  # add suffix to saved images
 model: sr
 distortion: sr
@@ -25,4 +25,4 @@ network_G:
 
 #### path
 path:
-  pretrain_model_G: /home/andreis/workspace/mmsr/experiments/002_PSNR_base_model_feature_loss_16_progressive/models/200000_G.pth
+  pretrain_model_G: /home/andreis/workspace/mmsr/experiments/002_PSNR_mask_no_align_corners/models/latest_G.pth

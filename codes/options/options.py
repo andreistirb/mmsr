@@ -11,8 +11,8 @@ def parse(opt_path, is_train=True):
         opt = yaml.load(f, Loader=Loader)
     # export CUDA_VISIBLE_DEVICES
     gpu_list = ','.join(str(x) for x in opt['gpu_ids'])
-    os.environ['CUDA_VISIBLE_DEVICES'] = gpu_list
-    print('export CUDA_VISIBLE_DEVICES=' + gpu_list)
+    #os.environ['CUDA_VISIBLE_DEVICES'] = gpu_list
+    #print('export CUDA_VISIBLE_DEVICES=' + gpu_list)
 
     opt['is_train'] = is_train
     if opt['distortion'] == 'sr':
@@ -50,7 +50,7 @@ def parse(opt_path, is_train=True):
         opt['path']['training_state'] = osp.join(experiments_root, 'training_state')
         opt['path']['log'] = experiments_root
         opt['path']['val_images'] = osp.join(experiments_root, 'val_images')
-
+        
         # change some options for debug mode
         if 'debug' in opt['name']:
             opt['train']['val_freq'] = 8
